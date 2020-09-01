@@ -28,15 +28,27 @@ class GameState():
         """A player in the game."""
         def __init__(self, name, deck_size=104, cards_held_n=10, starting_points=66):
             self.name = name
+            self.deck_size = deck_size
             self.played = set()
             self.cards_held_n = cards_held_n
             self.points = starting_points
+            self.estimate_hand_avg()
             # TODO: math on cards played
+
+        def estimate_hand_avg(self):
+            """
+            Estimate the average card value in the hand, based on cards played.
+
+            Assumes typical initial hand of equispaced cards with mean of (deck_size+1)/2.
+            NB: This means the estimate can exceed bounds of deck if initial hand is strongly skewed."""
+            deck_mean = (self.deck_size+1)/2
+            self.hand_avg_est = deck_mean + (deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
 
         def play(self,card):
             """Play the designated card from the hand."""
             self.played.add(card)
             self.cards_held_n -= 1
+            self.estimate_hand_avg()
 
         # def score(self,points):
         #     """Update the player's score (decrement)."""
