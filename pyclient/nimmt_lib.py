@@ -26,16 +26,17 @@ class GameState():
 
     class Player():
         """A player in the game."""
-        def __init__(self, name, deck_size=104):
+        def __init__(self, name, deck_size=104, cards_held_n=10, starting_points=66):
             self.name = name
             self.played = set()
-            self.hand_size = 10
-            self.points = 66
+            self.cards_held_n = cards_held_n
+            self.points = starting_points
+            # TODO: math on cards played
 
         def play(self,card):
             """Play the designated card from the hand."""
             self.played.add(card)
-            self.hand_size -= 1
+            self.cards_held_n -= 1
 
         # def score(self,points):
         #     """Update the player's score (decrement)."""
@@ -63,21 +64,20 @@ class GameState():
         self.player_add([self.myname])
         send_msg(header="player", body=self.myname)
 
-    def player_add(self,player_names):
-        """Add a player to the game (by name)."""
-        # existing  = [player.name for player in self.players]
-        for player_name in player_names[0].split():
-            self.players.update({player_name: self.Player(player_name)})
-
     def build_messages(self, line_received):
         """Keep reading lines until we have a complete server message."""
         self._message_build.append(line_received.rstrip())
         if line_received == '\n':
             self.progress_game()
 
+    def player_add(self,player_names):
+        """Add a player to the game (by name)."""
+        for player_name in player_names[0].split():
+            self.players.update({player_name: self.Player(player_name)})
+
     def new_hand(self,new_cards):
         for k,v in self.players.items():
-            v.hand_size = self.hand_size
+            v.__init__(name=k)
         self.played = set()
         self.hand = {int(card) for card in new_cards[0].split()}
 
