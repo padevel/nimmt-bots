@@ -1,7 +1,7 @@
 import random
 import sys
 
-run_as_test = False
+run_as_test = False  # FLAG
 
 def err_print(*args, **kwargs):
     """Print to stderr i.l.o. stdout."""
@@ -118,10 +118,12 @@ class GameState():
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
 
-        if run_as_test:
-            print("IH:  " + "\nIB:  ".join(self._message_build))
-        else:
-            err_print("IH:  " + "\nIB:  ".join(self._message_build))
+        echo_input = False  # FLAG
+        if echo_input:
+            if run_as_test:
+                print("IH:  " + "\nIB:  ".join(self._message_build))
+            else:
+                err_print("IH:  " + "\nIB:  ".join(self._message_build))
 
         # Set the status flag to a default
         self.status = "NOMINAL - Nothing of note yet."

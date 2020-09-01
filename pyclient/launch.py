@@ -7,7 +7,7 @@ import nimmt_lib as nimmt
 import sys
 
 # Setup, and process arguments
-run_as_test = False
+run_as_test = False  # FLAG
 for arg in sys.argv:
     if arg == 'test':
         run_as_test = True
