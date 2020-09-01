@@ -12,6 +12,13 @@ card?
 
 card?
 
-score
+scores
 penbot 10 bebop 20 ragtime 34 honkytonk 27
 
+stacks
+1 1 2
+5 6 72
+4 12 88
+3 3 25
+
+stack?

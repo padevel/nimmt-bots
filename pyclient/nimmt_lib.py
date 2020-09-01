@@ -82,7 +82,7 @@ class GameState():
         self.hand = {int(card) for card in new_cards[0].split()}
 
     def update_stacks(self, stack_table):
-        self.stacks = stack_table  # Still need to process
+        self.stacks = [list(map(int,row.split())) for row in stack_table]  # Still need to process
 
     def choose_card(self):
         return(random.sample(self.hand,1)[0])
@@ -110,10 +110,17 @@ class GameState():
             self.players[player].points = score 
             err_print(self.players[player].name + ": " + str(self.players[player].points))
 
-    def choose_stack(self):
-        chosen_stack = random.choice([1,2,3,4])
+    def choose_stack(self, method='lowest'):
+        if method == 'random':
+            chosen_stack = random.choice([1,2,3,4])
+        else:  # method == 'lowest'
+            lowest_score = 99
+            for i,stack in enumerate(self.stacks):
+                if stack[1] < lowest_score:
+                    lowest_score=stack[1]
+                    chosen_stack = i+1
+
         send_msg(header="stack", body=str(chosen_stack))
-        # TODO: Pick the lowest score
 
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
@@ -140,10 +147,6 @@ class GameState():
             self.new_hand(body)
             self.status = "CARDS: Dealt a new hand."
             err_print("Hand: " + ", ".join(str(card) for card in self.hand))
-        elif header == "stacks":
-            self.update_stacks(body)
-            err_print(self.stacks)
-            self.status = "STACKS: Updated the stacks."
         elif header == "card?":
             self.play_a_card()
             self.status = "CARD?: Selected a card."
@@ -153,6 +156,10 @@ class GameState():
         elif header == "scores":
             self.update_scores(body)
             self.status = "SCORE: Updated scores."
+        elif header == "stacks":
+            self.update_stacks(body)
+            err_print(self.stacks)
+            self.status = "STACKS: Updated the stacks."
         elif header == "stack?":
             self.choose_stack()
             self.status = "STACK?: Selected a stack."
