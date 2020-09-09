@@ -27,6 +27,7 @@ class GameState():
         def __init__(self, name, deck_size=104, cards_held_n=10, starting_points=66):
             self.name = name
             self.deck_size = deck_size
+            self.deck_mean = (self.deck_size+1)/2
             self.played = set()
             self.cards_held_n = cards_held_n
             self.points = starting_points
@@ -40,10 +41,9 @@ class GameState():
             Assumes typical initial hand of equispaced cards with mean of (deck_size+1)/2.
             NB: This means the estimate can exceed bounds of deck if initial hand is strongly skewed."""
             if self.cards_held_n > 0:
-                deck_mean = (self.deck_size+1)/2
-                self.hand_avg_est = deck_mean + (deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
+                self.hand_avg_est = self.deck_mean + (self.deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
             else:
-                self.hand_avg_est = deck_mean
+                self.hand_avg_est = self.deck_mean
 
         def play(self,card):
             """Play the designated card from the hand."""
@@ -55,9 +55,10 @@ class GameState():
         #     """Update the player's score (decrement)."""
         #     self.points -= points
 
-    def __init__(self, deck=set(range(1, 104+1)), hand_size=10, player_name="",
+    def __init__(self, player_name, deck_size=104, hand_size=10,
                  cards_played=set(), hand=set(), players = {}, stacks = [], testing=False):
-        self.deck = deck
+        self.deck_size = deck_size
+        self.deck = set(range(1, deck_size+1))
         self.hand_size = hand_size
         self.cards_played = cards_played # by all players
         self.cards_in_hand = hand
@@ -87,7 +88,7 @@ class GameState():
     def player_add(self,player_names):
         """Add a player to the game (by name)."""
         for player_name in player_names[0].split():
-            self.players.update({player_name: self.Player(player_name)})
+            self.players.update({player_name: self.Player(player_name, deck_size = self.deck_size)})
 
     def new_hand(self,new_cards):
         for k,v in self.players.items():
