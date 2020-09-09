@@ -5,16 +5,17 @@ Created on Wed Aug 26 12:44:50 202
 """
 import nimmt_lib as nimmt
 import sys
+import argparse
 
 # Setup, and process arguments
-run_as_test = False  # FLAG
-for arg in sys.argv:
-    if arg == 'test':
-        run_as_test = True
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--test", action="store_true",
+                    help="read and respond to pseudo stdin from test file")
+args = parser.parse_args()
 
-the_game = nimmt.GameState(player_name="penbot")
+the_game = nimmt.GameState(player_name="penbot", testing=args.test)
 
-if run_as_test:
+if args.test:
     input_stream = open('./tests/harness.stdin')
 else:
     input_stream = sys.stdin

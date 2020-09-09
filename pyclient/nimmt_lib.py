@@ -1,15 +1,13 @@
 import random
 import sys
 
-run_as_test = False  # FLAG
-
 def err_print(*args, **kwargs):
     """Print to stderr i.l.o. stdout."""
     print(*args, file=sys.stderr, **kwargs)
 
-def send_msg(header, body):
+def send_msg(header, body, testing=False):
     """Send the message to the server (via stdout)."""
-    if run_as_test:
+    if testing:
         header_prefix = "OH: "
         body_prefix = "OB: "
     else:
@@ -58,7 +56,7 @@ class GameState():
         #     self.points -= points
 
     def __init__(self, deck=set(range(1, 104+1)), hand_size=10, player_name="",
-                 cards_played=set(), hand=set(), players = {}, stacks = []):
+                 cards_played=set(), hand=set(), players = {}, stacks = [], testing=False):
         self.deck = deck
         self.hand_size = hand_size
         self.cards_played = cards_played # by all players
@@ -70,6 +68,7 @@ class GameState():
         self.status = "INITIALISED"
         self.history = []
         self._message_build = []
+        self._testing = testing
 
     def update_cards_at_large(self):
         self.cards_at_large = self.deck.difference(self.cards_played).difference(self.cards_in_hand)
@@ -77,7 +76,7 @@ class GameState():
     def register_self(self):
         """Add oneself as a player in the hosted game."""
         self.player_add([self.myname])
-        send_msg(header="player", body=self.myname)
+        send_msg(header="player", body=self.myname, testing=self._testing)
 
     def build_messages(self, line_received):
         """Keep reading lines until we have a complete server message."""
@@ -104,7 +103,7 @@ class GameState():
 
     def play_a_card(self):
         card_selected = self.choose_card()
-        send_msg(header="card", body=str(card_selected))
+        send_msg(header="card", body=str(card_selected), testing=self._testing)
         self.hand.discard(card_selected)
     
     def update_played(self, the_plays):
@@ -135,14 +134,14 @@ class GameState():
                     lowest_score=stack[1]
                     chosen_stack = i+1
 
-        send_msg(header="stack", body=str(chosen_stack))
+        send_msg(header="stack", body=str(chosen_stack), testing=self._testing)
 
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
 
         echo_input = False  # FLAG
         if echo_input:
-            if run_as_test:
+            if self._testing:
                 print("IH:  " + "\nIB:  ".join(self._message_build))
             else:
                 err_print("IH:  " + "\nIB:  ".join(self._message_build))
