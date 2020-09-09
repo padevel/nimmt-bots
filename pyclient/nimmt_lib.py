@@ -195,7 +195,7 @@ class GameState():
             self.choose_stack()
             self.status = "STACK?: Selected a stack."
         elif header == "info":
-            pass
+            err_print("info: " + "\n> ".join(body))
         else:
             assert False, "What is this message???"
         
