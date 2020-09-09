@@ -59,7 +59,8 @@ class GameState():
         #     self.points -= points
 
     def __init__(self, player_name, deck_size=104, hand_size=10,
-                 cards_played=set(), hand=set(), players = {}, stacks = [], testing=False):
+                 cards_played=set(), hand=set(), players = {}, stacks = [],
+                 testing=False, echo_input=False):
         self.deck_size = deck_size
         self.deck = set(range(1, deck_size+1))
         self.hand_size = hand_size
@@ -73,6 +74,7 @@ class GameState():
         self.history = []
         self._message_build = []
         self._testing = testing
+        self._echo_input = echo_input
 
     def update_cards_at_large(self):
         self.cards_at_large = self.deck.difference(self.cards_played).difference(self.cards_in_hand)
@@ -143,12 +145,8 @@ class GameState():
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
 
-        echo_input = False  # FLAG
-        if echo_input:
-            if self._testing:
-                print("IH:  " + "\nIB:  ".join(self._message_build))
-            else:
-                err_print("IH:  " + "\nIB:  ".join(self._message_build))
+        if self._echo_input:
+            err_print("IH:  " + "\nIB:  ".join(self._message_build))
 
         # Set the status flag to a default
         self.status = "NOMINAL - Nothing of note yet."
