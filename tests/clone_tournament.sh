@@ -3,7 +3,8 @@
 
 # Start the server
 ssh $1@$2 $3 -p $4 &
-read -t 2 -p "Launching server on port $4.\n"
+read -t 0.6 -p "Launching server on port $4..."
+echo ""
 # Start the bots
 socat TCP:${2}:$4 EXEC:"python ../pyclient/launch.py -e" 2>../logs/penbot.log &
 socat TCP:${2}:$4 EXEC:"python ../pyclient/launch.py -n the_clone" 2>../logs/the_clone.log &
