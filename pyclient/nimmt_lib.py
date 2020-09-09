@@ -75,6 +75,10 @@ class GameState():
         self._message_build = []
         self._testing = testing
         self._echo_input = echo_input
+        self.strings={}
+        self.strings["scores"] = ""
+        self.strings["played"] = ""
+        self.strings["stacks"] = ""
 
     def update_cards_at_large(self):
         self.cards_at_large = self.deck.difference(self.cards_played).difference(self.cards_in_hand)
@@ -94,12 +98,14 @@ class GameState():
         """Add a player to the game (by name)."""
         for player_name in player_names[0].split():
             self.players.update({player_name: self.Player(player_name, deck_size = self.deck_size)})
+            self.summarise_scores()
 
     def new_hand(self,new_cards):
         for k,v in self.players.items():
             v.__init__(name=k)
         self.played = set()
         self.hand = {int(card) for card in new_cards[0].split()}
+        self.summarise_scores()
 
     def update_stacks(self, stack_table):
         self.stacks = [list(map(int,row.split())) for row in stack_table]  # Still need to process
@@ -127,8 +133,13 @@ class GameState():
         for line in score_table:
             player = line[0]
             score = int(line[1])
-            self.players[player].points = score 
-            err_print(self.players[player].name + ": " + str(self.players[player].points))
+            self.players[player].points = score
+        self.summarise_scores()
+
+    def summarise_scores(self):
+        self.strings["scores"] = ", ".join([self.players[player].name + ": "
+                                            + str(self.players[player].points)
+                                            for player in self.players])
 
     def choose_stack(self, method='lowest'):
         if method == 'random':
@@ -141,6 +152,10 @@ class GameState():
                     chosen_stack = i+1
 
         send_msg(header="stack", body=str(chosen_stack), testing=self._testing)
+
+    def log_game_update(self):
+        """Write out the bundled changes of who played what where, and current scores."""
+        err_print(" | ".join((self.strings["scores"], self.strings["played"], self.strings["stacks"])))
 
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
@@ -161,8 +176,8 @@ class GameState():
             self.status = "PLAYERS: Added one or more players."
         elif header == "cards":
             self.new_hand(body)
+            err_print("Hand: " + ", ".join(str(card) for card in sorted(self.hand)))
             self.status = "CARDS: Dealt a new hand."
-            err_print("Hand: " + ", ".join(str(card) for card in self.hand))
         elif header == "card?":
             self.play_a_card()
             self.status = "CARD?: Selected a card."
@@ -174,7 +189,7 @@ class GameState():
             self.status = "SCORE: Updated scores."
         elif header == "stacks":
             self.update_stacks(body)
-            err_print(self.stacks)
+            self.log_game_update()
             self.status = "STACKS: Updated the stacks."
         elif header == "stack?":
             self.choose_stack()
@@ -182,7 +197,7 @@ class GameState():
         elif header == "info":
             pass
         else:
-            assert False, "What is this???"
+            assert False, "What is this message???"
         
         # Archive and clear the message just actioned
         self.history.append(self._message_build)
