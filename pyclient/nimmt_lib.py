@@ -20,7 +20,7 @@ def send_msg(header, body, testing=False):
     print(body_prefix + "", flush=True)
 
 class GameState():
-    """Structure containing the current state of a game"""
+    """The current state of a game"""
 
     class Player():
         """A player in the game."""
@@ -39,7 +39,9 @@ class GameState():
             Estimate the average card value in the hand, based on cards played.
 
             Assumes typical initial hand of equispaced cards with mean of (deck_size+1)/2.
-            NB: This means the estimate can exceed bounds of deck if initial hand is strongly skewed."""
+            NB: This means the estimate can exceed bounds of deck if initial hand is strongly skewed.
+            """
+
             if self.cards_held_n > 0:
                 self.hand_avg_est = self.deck_mean + (self.deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
             else:
@@ -47,6 +49,7 @@ class GameState():
 
         def play(self,card):
             """Play the designated card from the hand."""
+
             self.played.add(card)
             self.cards_held_n -= 1
             self.estimate_hand_avg()
@@ -60,7 +63,7 @@ class GameState():
         self.deck_size = deck_size
         self.deck = set(range(1, deck_size+1))
         self.hand_size = hand_size
-        self.cards_played = cards_played # by all players
+        self.cards_played = cards_played  # by all players
         self.cards_in_hand = hand
         self.myname = player_name
         self.update_cards_at_large()
