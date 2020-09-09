@@ -41,8 +41,11 @@ class GameState():
 
             Assumes typical initial hand of equispaced cards with mean of (deck_size+1)/2.
             NB: This means the estimate can exceed bounds of deck if initial hand is strongly skewed."""
-            deck_mean = (self.deck_size+1)/2
-            self.hand_avg_est = deck_mean + (deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
+            if self.cards_held_n > 0:
+                deck_mean = (self.deck_size+1)/2
+                self.hand_avg_est = deck_mean + (deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
+            else:
+                self.hand_avg_est = deck_mean
 
         def play(self,card):
             """Play the designated card from the hand."""
