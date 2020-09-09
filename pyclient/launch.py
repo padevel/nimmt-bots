@@ -11,9 +11,11 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--test", action="store_true",
                     help="read and respond to pseudo stdin from test file")
+parser.add_argument("-n", "--name", default="penbot",
+                    help="change the bot's name (default: 'penbot')")
 args = parser.parse_args()
 
-the_game = nimmt.GameState(player_name="penbot", testing=args.test)
+the_game = nimmt.GameState(player_name=args.name, testing=args.test)
 
 if args.test:
     input_stream = open('./tests/harness.stdin')
