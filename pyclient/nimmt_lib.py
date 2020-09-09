@@ -24,7 +24,7 @@ class GameState():
 
     class Player():
         """A player in the game."""
-        def __init__(self, name, deck_size=104, cards_held_n=10, starting_points=66):
+        def __init__(self, name, id, deck_size=104, cards_held_n=10, starting_points=66):
             self.name = name
             self.deck_size = deck_size
             self.deck_mean = (self.deck_size+1)/2
@@ -32,6 +32,7 @@ class GameState():
             self.cards_held_n = cards_held_n
             self.points = starting_points
             self.estimate_hand_avg()
+            self.id = id
             # TODO: math on cards played
 
         def estimate_hand_avg(self):
@@ -95,14 +96,18 @@ class GameState():
             self.progress_game()
 
     def player_add(self,player_names):
-        """Add a player to the game (by name)."""
-        for player_name in player_names[0].split():
-            self.players.update({player_name: self.Player(player_name, deck_size = self.deck_size)})
+        """Add one or more players to the game (by name)."""
+        player_names = player_names[0].split()
+        assert len(set(player_names)) == len(player_names), "The list of player names has duplicates."
+        for player_name in player_names:
+            self.players.update({player_name: self.Player(player_name, deck_size = self.deck_size, id="temp")})
             self.summarise_scores()
+        for n, k in enumerate(self.players):
+            self.players[k].id = "P"+str(n+1)  # Number the playes in the (arbitrary) order that python iterates the players
 
     def new_hand(self,new_cards):
         for k,v in self.players.items():
-            v.__init__(name=k)
+            v.__init__(name=k, id=v.id)
         self.played = set()
         self.hand = {int(card) for card in new_cards[0].split()}
         self.summarise_scores()
@@ -138,7 +143,7 @@ class GameState():
 
     def summarise_scores(self):
         self.strings["scores"] = ", ".join([self.players[player].name + ": "
-                                            + str(self.players[player].points)
+                                            + str(self.players[player].points).rjust(2)
                                             for player in self.players])
 
     def choose_stack(self, method='lowest'):
@@ -172,7 +177,7 @@ class GameState():
 
         if header == "players":
             self.player_add(body)
-            err_print ("Players: " + ", ".join([v.name for k,v in self.players.items()]))
+            err_print ("Players: " + ", ".join([v.name + " (" + v.id + ")" for k,v in self.players.items()]))
             self.status = "PLAYERS: Added one or more players."
         elif header == "cards":
             self.new_hand(body)
