@@ -110,16 +110,16 @@ class GameState():
     def play_a_card(self):
         card_selected = self.choose_card()
         send_msg(header="card", body=str(card_selected), testing=self._testing)
-        self.hand.discard(card_selected)
+        self.hand.remove(card_selected)
     
-    def update_played(self, the_plays):
-        for play in the_plays:
-            (player, card, stack) = play.split()
-            card = int(card)
-            stack = int(stack)
-            self.players[player].play(card)
-            self.played.update({card})
-            self.cards_at_large.difference({card})
+    def update_played(self, the_play):
+        (player, card, stack) = the_play[0].split()
+        card = int(card)
+        stack = int(stack)
+        self.players[player].play(card)
+        self.played.add(card)
+        self.cards_at_large.discard(card)  # 'remove' method will cause error on card from own hand
+        self.strings["played"] = player + " played " + str(card) + " on " + str(stack)
 
     def update_scores(self, score_list):
         score_list = score_list[0].split()
