@@ -78,7 +78,7 @@ class GameState():
         self._echo_input = echo_input
         self.strings={}
         self.strings["scores"] = ""
-        self.strings["played"] = ""
+        self.strings["played"] = ["Starting condition, no cards played."]
         self.strings["stacks"] = ""
 
     def update_cards_at_large(self):
@@ -110,10 +110,12 @@ class GameState():
             v.__init__(name=k, id=v.id)
         self.played = set()
         self.hand = {int(card) for card in new_cards[0].split()}
+        self.strings["played"] = ["Starting layout, no cards played."]
         self.summarise_scores()
 
     def update_stacks(self, stack_table):
         self.stacks = [list(map(int,row.split())) for row in stack_table]  # Still need to process
+        self.strings["stacks"] = "(" + ") (".join([" ".join(str(element) for element in stack) for stack in self.stacks]) + ")"
 
     def choose_card(self):
         return(random.sample(self.hand,1)[0])
@@ -130,7 +132,7 @@ class GameState():
         self.players[player].play(card)
         self.played.add(card)
         self.cards_at_large.discard(card)  # 'remove' method will cause error on card from own hand
-        self.strings["played"] = player + " played " + str(card) + " on " + str(stack)
+        self.strings["played"].append(self.players[player].id + ":" + str(card).rjust(3) + "->" + str(stack))
 
     def update_scores(self, score_list):
         score_list = score_list[0].split()
@@ -160,7 +162,10 @@ class GameState():
 
     def log_game_update(self):
         """Write out the bundled changes of who played what where, and current scores."""
-        err_print(" | ".join((self.strings["scores"], self.strings["played"], self.strings["stacks"])))
+        err_print(" | ".join((self.strings["scores"],
+                              ", ".join(self.strings["played"]),
+                              self.strings["stacks"])))
+        self.strings["played"] = []
 
     def progress_game(self):
         """Using the most recent server message, move the game forward."""
@@ -191,10 +196,10 @@ class GameState():
             self.status = "PLAYED: Updated played cards."
         elif header == "scores":
             self.update_scores(body)
+            self.log_game_update()
             self.status = "SCORE: Updated scores."
         elif header == "stacks":
             self.update_stacks(body)
-            self.log_game_update()
             self.status = "STACKS: Updated the stacks."
         elif header == "stack?":
             self.choose_stack()
