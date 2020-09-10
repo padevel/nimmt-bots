@@ -34,8 +34,9 @@ for line in input_stream:
 
 # Game terminated
 if the_game.status[0:5] == 'ERROR':
-    print("Something has gone wrong:\n" + the_game.status)
+    nimmt.err_print("Something has gone wrong:\n" + the_game.status)
 else:
-    print("Final scores:")
-    for k,v in the_game.players.items():
-        print(k + " " + str(v.points))
+    final_scores_str = ", ".join([k + " " + str(v.points) for k,v in the_game.players.items()])
+    nimmt.err_print("Final scores:")
+    nimmt.err_print(", ".join([k + " " + str(v.points) for k,v in the_game.players.items()]))
+    # TODO: append single-line scores to score log file if name == "penbot"
