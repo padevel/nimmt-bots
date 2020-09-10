@@ -108,6 +108,7 @@ class GameState():
 
     def __init__(self, player_name, deck_size=104, hand_size=10, stack_count=4,
                  cards_played=set(), hand=set(), players = {}, stacks = [],
+                 weights = {},
                  testing=False, echo_input=False):
         """Initialise a 6nimmt! game.
 
@@ -127,7 +128,10 @@ class GameState():
         - players: a dictionary of all (tracked) Players
         - stacks: a list of lists, each list records the properties for a stack
 
-        Logging and debugging attributs:
+        Strategies:
+        - strategies: a dict of the available strategies
+
+        Logging and debugging attributes:
         - history: a record of all messages received from the server
         - status: a message reported during the most recent game-evolving action
         - _testing: a switch for enabling 'test' features
@@ -154,6 +158,7 @@ class GameState():
         self.strings["scores"] = ""
         self.strings["played"] = ["Starting condition, no cards played."]
         self.strings["stacks"] = ""
+        self.strategies = self.build_strategies(weights)
 
     def update_cards_at_large(self):
         """Update the set of cards not yet sighted using cards_in_hand and cards_played."""
@@ -196,13 +201,24 @@ class GameState():
 
     def choose_card(self):
         """Nominate a card to play at the request of server 'card?' message."""
-        return(random.sample(self.hand,1)[0])
+        best_score = -99
+        strategy_chosen = None
+        for strategy in self.strategies:
+            strategy_proposed = strategy['method']()  # (score, card, reason)
+            weighted_score = strategy_proposed[0]*strategy['weight']
+            if weighted_score > best_score:
+                best_score = weighted_score
+                strategy_chosen = strategy_proposed
+        return strategy_chosen
 
     def play_a_card(self):
         """Choose a card, send nominated card to server, and update tracking."""
-        card_selected = self.choose_card()
+        score, card_selected, reason = self.choose_card()
         send_msg(header="card", body=str(card_selected), testing=self._testing)
         self.hand.remove(card_selected)
+        self.status = "CARD?: Selected " + str(card_selected)+" with score " + str(score) + " because " + reason
+        # TODO: name the strategy
+        # TODO: embed the weight into the function
 
     def update_played(self, the_play):
         """Update tracking for a Player, and logging, based on 'played' message from server."""
@@ -277,7 +293,6 @@ class GameState():
             self.status = "CARDS: Dealt a new hand."
         elif header == "card?":
             self.play_a_card()
-            self.status = "CARD?: Selected a card."
         elif header == "played":
             self.update_played(body)
             self.status = "PLAYED: Updated played cards."
@@ -299,3 +314,36 @@ class GameState():
         # Archive and clear the message just actioned
         self.history.append(self._message_build)
         self._message_build = []
+
+        err_print(self.status)
+
+    # Strategies
+    def choose_random(self):
+        return (10,
+                random.sample(self.hand,1)[0],
+                'yolo')
+
+    def choose_lowest(self):
+        return (20,
+                min(list(self.hand)),
+                'feeling frugal')
+    def choose_highest(self):
+        return(30,
+                min(list(self.hand)),
+                'feeling generous')
+
+    def build_strategies(self, weights):
+        """Create a dict of strategies choosing a card.
+
+        Each strategy has the following structure:
+         - key: strategy name (str)
+         - weight: fixed weight from command line arguments, default 1.0
+         - method: a method to process the game data and return a 'proposed play'
+        A proposed play is a tuple (score, card, reason).
+        """
+        strategies = []
+        strategies.append({'name': 'random', 'weight': weights.pop('random', 4.0), 'method': self.choose_random})  # TODO remove weird default
+        strategies.append({'name': 'lowest', 'weight': weights.pop('lowest', 1.0), 'method': self.choose_lowest})
+        strategies.append({'name': 'highest', 'weight': weights.pop('highest', 1.0), 'method': self.choose_highest})
+
+        return strategies
