@@ -1,5 +1,5 @@
 """
-Launch the 6nimmt! client bot.
+Launch a 6nimmt! client bot.
 
 Created on Wed Aug 26 12:44:50 202
 """

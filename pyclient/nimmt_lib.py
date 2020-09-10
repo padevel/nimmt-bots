@@ -6,7 +6,7 @@ def err_print(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 def send_msg(header, body, testing=False):
-    """Send the message to the server (via stdout)."""
+    """Send a message to the server (via stdout)."""
     if testing:
         header_prefix = "OH: "
         body_prefix = "OB: "
@@ -20,20 +20,65 @@ def send_msg(header, body, testing=False):
     print(body_prefix + "", flush=True)
 
 class GameState():
-    """The current state of a game"""
+    """A summary of the state of a game of 6nimmt!
+
+    A game keeps track of what cards have been played, and the state
+    of each stack in the play area. Each player's actions are also tracked individually
+    using the 'Player' class.
+
+    Classes:
+    - Player: logging for a single player participating in the game
+
+    Game evolution methods:
+    - register_self(): declare 'self' to the game server
+    - progress_game(): handle the most recent message from the server using the following methods
+    - player_add(): instatiate a player, or update an existing player
+    - new_hand(): reinitialise card tracking centrally and for each Player
+    - update_stacks(): record the information provided by the server about the stacks
+    - play_a_card(): choose a card and send to server, update central card tracking
+    - update_played(): enact the action reported by the server for a player
+    - update_scores(): record the scores reported by the server
+    - choose_stack(): nominate a stack to replace when playing a low card
+
+    Helper methods:
+    - build_messages(line_received): construct complete messages from the lines recieved and
+      send to 'progress_game()' when complete
+    - update_cards_at_large(): recalculate which cards are yet to be seen in this hand
+    - choose_card(): select a card from own hand to meet server request
+    - summarise_scores(): gather recently-updated scores from Players and record in a string
+    - log_game_update(): write a single-line summary of what has just happened (once per round)
+    """
 
     class Player():
-        """A player in the game."""
+        """A player in the game.
+
+        Players have a score, a count of cards in their hand, a record of what they've
+        played this hand, and some stats summarising their behaviour and likely nature
+        of the cards held.
+        """
+
         def __init__(self, name, id, deck_size=104, cards_held_n=10, starting_points=66):
+            """Create a player in the game.
+
+            Player is populated with:
+            - name: the name of the player (=name)
+            - id: a unique, short name for the player (=id)
+            - cards_held_n: the number of cards held (=cards_held_n)
+            - played: an empty set of cards played
+            - points: number of points held (=starting_points)
+            - deck_size: size of the deck (=deck_size, used for stats calcs)
+            - hand_avg_est: an estimate of the average card value held, based on played cards
+            """
+
             self.name = name
             self.deck_size = deck_size
             self.deck_mean = (self.deck_size+1)/2
             self.played = set()
             self.cards_held_n = cards_held_n
             self.points = starting_points
-            self.estimate_hand_avg()
+            self.hand_avg_est = self.estimate_hand_avg()
             self.id = id
-            # TODO: math on cards played
+            # TODO: more math on cards played
 
         def estimate_hand_avg(self):
             """
@@ -44,31 +89,60 @@ class GameState():
             """
 
             if self.cards_held_n > 0:
-                self.hand_avg_est = self.deck_mean + (self.deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
+                return self.deck_mean + (self.deck_mean*len(self.played)-sum(list(self.played))) / self.cards_held_n
             else:
-                self.hand_avg_est = self.deck_mean
+                return self.deck_mean
 
         def play(self,card):
-            """Play the designated card from the hand."""
+            """Record playing the nominated card from the hand and update tracking."""
 
             self.played.add(card)
             self.cards_held_n -= 1
-            self.estimate_hand_avg()
+            self.hand_avg_est = self.estimate_hand_avg()
 
+        # score() method is not currently needed as server provides absolute scores
+        # and scoring/card playing logic is not implemented (yet?)
         # def score(self,points):
         #     """Update the player's score (decrement)."""
         #     self.points -= points
 
-    def __init__(self, player_name, deck_size=104, hand_size=10,
+    def __init__(self, player_name, deck_size=104, hand_size=10, stack_count=4,
                  cards_played=set(), hand=set(), players = {}, stacks = [],
                  testing=False, echo_input=False):
+        """Initialise a 6nimmt! game.
+
+        Populate tracking data for a 6nimmt game:
+
+        Game parameters:
+        - hand_size: the number of cards dealt to each player for each hand
+        - stack_count: the number of stacks used
+        - deck_size: the size of the deck used
+        - deck: a set of all cards in the deck
+        - myname: the name of the 'self' Player
+
+        State of the game:
+        - cards_played: the set of all cards thus far played in this hand
+        - cards_in_hand: the set of cards held in-hand by 'self'
+        - cards_at_large: the set of cards not sighted in own hand or in list of played cards
+        - players: a dictionary of all (tracked) Players
+        - stacks: a list of lists, each list records the properties for a stack
+
+        Logging and debugging attributs:
+        - history: a record of all messages received from the server
+        - status: a message reported during the most recent game-evolving action
+        - _testing: a switch for enabling 'test' features
+        - _echo_input: a switch for echoing received messages into the stderr log
+        - self.strings: a dictionary of strings and list of strings to help with populating the log
+        """
+
         self.deck_size = deck_size
         self.deck = set(range(1, deck_size+1))
         self.hand_size = hand_size
+        self.stack_count = stack_count
         self.cards_played = cards_played  # by all players
         self.cards_in_hand = hand
         self.myname = player_name
-        self.update_cards_at_large()
+        self.cards_at_large = self.update_cards_at_large()
         self.players = players
         self.stacks = stacks
         self.status = "INITIALISED"
@@ -82,10 +156,11 @@ class GameState():
         self.strings["stacks"] = ""
 
     def update_cards_at_large(self):
-        self.cards_at_large = self.deck.difference(self.cards_played).difference(self.cards_in_hand)
+        """Update the set of cards not yet sighted using cards_in_hand and cards_played."""
+        return self.deck.difference(self.cards_played).difference(self.cards_in_hand)
 
     def register_self(self):
-        """Add oneself as a player in the hosted game."""
+        """Add oneself as a player in the hosted game, and instatiate a Player for logging."""
         self.player_add([self.myname])
         send_msg(header="player", body=self.myname, testing=self._testing)
 
@@ -106,6 +181,7 @@ class GameState():
             self.players[k].id = "P"+str(n+1)  # Number the playes in the (arbitrary) order that python iterates the players
 
     def new_hand(self,new_cards):
+        """Reinitialise card tracking to start a new hand."""
         for k,v in self.players.items():
             v.__init__(name=k, id=v.id)
         self.played = set()
@@ -114,27 +190,32 @@ class GameState():
         self.summarise_scores()
 
     def update_stacks(self, stack_table):
+        """Process the 'stacks' message form the server, and store data."""
         self.stacks = [list(map(int,row.split())) for row in stack_table]  # Still need to process
         self.strings["stacks"] = "(" + ") (".join([" ".join(str(element) for element in stack) for stack in self.stacks]) + ")"
 
     def choose_card(self):
+        """Nominate a card to play at the request of server 'card?' message."""
         return(random.sample(self.hand,1)[0])
 
     def play_a_card(self):
+        """Choose a card, send nominated card to server, and update tracking."""
         card_selected = self.choose_card()
         send_msg(header="card", body=str(card_selected), testing=self._testing)
         self.hand.remove(card_selected)
-    
+
     def update_played(self, the_play):
+        """Update tracking for a Player, and logging, based on 'played' message from server."""
         (player, card, stack) = the_play[0].split()
         card = int(card)
         stack = int(stack)
         self.players[player].play(card)
         self.played.add(card)
-        self.cards_at_large.discard(card)  # 'remove' method will cause error on card from own hand
+        self.cards_at_large = self.update_cards_at_large()
         self.strings["played"].append(self.players[player].id + ":" + str(card).rjust(3) + "->" + str(stack))
 
     def update_scores(self, score_list):
+        """Update player scores based on server 'scores' message."""
         score_list = score_list[0].split()
         score_table = list(zip(score_list[::2],score_list[1::2]))
         for line in score_table:
@@ -144,11 +225,13 @@ class GameState():
         self.summarise_scores()
 
     def summarise_scores(self):
+        """Prepare a one-line score report string to help with logging."""
         self.strings["scores"] = ", ".join([self.players[player].name + ": "
                                             + str(self.players[player].points).rjust(2)
                                             for player in self.players])
 
     def choose_stack(self, method='lowest'):
+        """Choose the stack to take when prompted with 'stack?'."""
         if method == 'random':
             chosen_stack = random.choice([1,2,3,4])
         else:  # method == 'lowest'
@@ -157,7 +240,6 @@ class GameState():
                 if stack[1] < lowest_score:
                     lowest_score=stack[1]
                     chosen_stack = i+1
-
         send_msg(header="stack", body=str(chosen_stack), testing=self._testing)
 
     def log_game_update(self):
@@ -168,7 +250,12 @@ class GameState():
         self.strings["played"] = []
 
     def progress_game(self):
-        """Using the most recent server message, move the game forward."""
+        """Using the most recent server message, move the game forward.
+
+        Messages that don't require action are simply logged or initialised appropriately, i.e.
+        'players', 'cards', 'played', 'scores', 'stacks', 'info'. Messages with a '?'
+        require a response: i.e. 'card?', "stack?".
+        """
 
         if self._echo_input:
             err_print("IH:  " + "\nIB:  ".join(self._message_build))
@@ -208,7 +295,7 @@ class GameState():
             err_print("info: " + "\n> ".join(body))
         else:
             assert False, "What is this message???"
-        
+
         # Archive and clear the message just actioned
         self.history.append(self._message_build)
         self._message_build = []
