@@ -15,9 +15,16 @@ parser.add_argument("-n", "--name", default="penbot",
                     help="change the bot's name (default: 'penbot')")
 parser.add_argument("-e", "--echo-input", action="store_true",
                     help="echo received messages into the log")
+parser.add_argument("-w", "--weights",
+                    help="set weights for each strategy, comma-separated <name>=<weight>")
 args = parser.parse_args()
 
-the_game = nimmt.GameState(player_name=args.name, testing=args.test, echo_input=args.echo_input)
+if args.weights:
+    weights = {weight.split("=")[0]: float(weight.split("=")[1]) for weight in args.weights.split(",")}
+else:
+    weights = {}
+
+the_game = nimmt.GameState(player_name=args.name, testing=args.test, echo_input=args.echo_input, strategy_weights=weights)
 
 if args.test:
     input_stream = open('./tests/harness.stdin')

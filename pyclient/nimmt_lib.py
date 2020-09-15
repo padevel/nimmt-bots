@@ -108,7 +108,7 @@ class GameState():
 
     def __init__(self, player_name, deck_size=104, hand_size=10, stack_count=4,
                  cards_played=set(), hand=set(), players = {}, stacks = [],
-                 weights = {},
+                 strategy_weights = {},
                  testing=False, echo_input=False):
         """Initialise a 6nimmt! game.
 
@@ -158,7 +158,7 @@ class GameState():
         self.strings["scores"] = ""
         self.strings["played"] = ["Starting condition, no cards played."]
         self.strings["stacks"] = ""
-        self.strategies = self.build_strategies(weights)
+        self.strategies = self.build_strategies(strategy_weights)
 
     def update_cards_at_large(self):
         """Update the set of cards not yet sighted using cards_in_hand and cards_played."""
@@ -383,7 +383,7 @@ class GameState():
         A proposed play is a tuple (score, card, reason).
         """
         strategies = []
-        strategies.append({'name': 'random', 'weight': weights.pop('random', 4.0), 'method': self.choose_random})  # TODO remove weird default
+        strategies.append({'name': 'random', 'weight': weights.pop('random', 1.0), 'method': self.choose_random})
         strategies.append({'name': 'lowest', 'weight': weights.pop('lowest', 1.0), 'method': self.choose_lowest})
         strategies.append({'name': 'highest', 'weight': weights.pop('highest', 1.0), 'method': self.choose_highest})
 
