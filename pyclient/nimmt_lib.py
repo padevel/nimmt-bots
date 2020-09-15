@@ -319,18 +319,59 @@ class GameState():
 
     # Strategies
     def choose_random(self):
+        """Identify the subjective value of playing a random card."""
         return (10,
                 random.sample(self.hand,1)[0],
                 'yolo')
 
     def choose_lowest(self):
-        return (20,
-                min(list(self.hand)),
-                'feeling frugal')
+        """Identify the subjective value of playing the lowest card."""
+        # get score of lowest-pointed stack and lowest card number on a playable stack
+        cheapest_stack = 99
+        lowest_stack = self.deck_size*2
+        # lowest_stack_count = 6
+        for stack in self.stacks:
+            if stack[1] < cheapest_stack:
+                cheapest_stack=stack[1]
+            if (stack[2] < lowest_stack) and (stack[0]<5):
+                lowest_stack = stack[2]
+                # lowest_stack_count = stack[0]
+        my_lowest = min(list(self.hand))
+        count_below_mine = sum(card < my_lowest for card in list(self.cards_at_large))
+
+        # Value estimate for expecting to take a stack
+        play_value = ((10/cheapest_stack)  # low points good. base of 10 for a 1-point stack
+                      / ((count_below_mine+1) * (len(self.hand)*(len(self.players)-1)/self.deck_size)))  # How close my card is to the bottom (estimate)
+        message = "Playing lowest card expecting to take a stack. (High value if card will likely score points this way anyway.)"
+
+        if my_lowest > lowest_stack:
+            play_value = -100
+            message = "Playing lowest card might go on top of a stack. Lowest card is not special."
+
+        return (play_value,
+                my_lowest,
+                message)
+
     def choose_highest(self):
-        return(30,
-                min(list(self.hand)),
-                'feeling generous')
+        """Identify the subjective value of playing the highest card."""
+        # Will likely go on top of a stack (not taking any), bad if the likely stack(s) are full, except if others must take a stack first
+        # May expend a high card that is needed later...
+
+        # identify which stack will likely land on
+        my_highest = max(list(self.hand))
+
+        highest_below_mine = 0
+        count_below_mine = 10
+        for stack in self.stacks:
+            if (stack[2] < my_highest) and (stack[2] > highest_below_mine):
+                highest_below_mine = stack[2]
+                count_below_mine = stack[1]
+        err_print([highest_below_mine, count_below_mine])
+
+        play_value = 50-15*(count_below_mine-1)
+        return (play_value,
+                my_highest,
+                'Playing highest, as it seems unlikely to take a stack.')
 
     def build_strategies(self, weights):
         """Create a dict of strategies choosing a card.
