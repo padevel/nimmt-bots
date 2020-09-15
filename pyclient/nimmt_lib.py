@@ -158,6 +158,7 @@ class GameState():
         self.strings["scores"] = ""
         self.strings["played"] = ["Starting condition, no cards played."]
         self.strings["stacks"] = ""
+        self.strings["strategies"] = ["Starting condition, no strategy evaluated"]
         self.strategies = self.build_strategies(strategy_weights)
 
     def update_cards_at_large(self):
@@ -201,11 +202,12 @@ class GameState():
 
     def choose_card(self):
         """Nominate a card to play at the request of server 'card?' message."""
-        best_score = -99
+        best_score = -999
         strategy_chosen = None
         for strategy in self.strategies:
             strategy_proposed = strategy['method']()  # (score, card, reason)
             weighted_score = strategy_proposed[0]*strategy['weight']
+            self.strings["strategies"].append(str(strategy['name'])[0:2] + ": " + str(weighted_score)[0:6])
             if weighted_score > best_score:
                 best_score = weighted_score
                 strategy_chosen = strategy_proposed
@@ -262,8 +264,11 @@ class GameState():
         """Write out the bundled changes of who played what where, and current scores."""
         err_print(" | ".join((self.strings["scores"],
                               ", ".join(self.strings["played"]),
-                              self.strings["stacks"])))
+                              self.strings["stacks"],
+                              ", ".join(self.strings["strategies"])
+                              )))
         self.strings["played"] = []
+        self.strings["strategies"] = []
 
     def progress_game(self):
         """Using the most recent server message, move the game forward.
@@ -283,6 +288,7 @@ class GameState():
         header = self._message_build[0]
         body = self._message_build[1:-1]
 
+        print_status = False
         if header == "players":
             self.player_add(body)
             err_print ("Players: " + ", ".join([v.name + " (" + v.id + ")" for k,v in self.players.items()]))
@@ -293,6 +299,7 @@ class GameState():
             self.status = "CARDS: Dealt a new hand."
         elif header == "card?":
             self.play_a_card()
+            print_status = True
         elif header == "played":
             self.update_played(body)
             self.status = "PLAYED: Updated played cards."
@@ -315,7 +322,8 @@ class GameState():
         self.history.append(self._message_build)
         self._message_build = []
 
-        err_print(self.status)
+        if print_status:
+            err_print(self.status)
 
     # Strategies
     def choose_random(self):
@@ -366,7 +374,6 @@ class GameState():
             if (stack[2] < my_highest) and (stack[2] > highest_below_mine):
                 highest_below_mine = stack[2]
                 count_below_mine = stack[1]
-        err_print([highest_below_mine, count_below_mine])
 
         play_value = 50-15*(count_below_mine-1)
         return (play_value,
